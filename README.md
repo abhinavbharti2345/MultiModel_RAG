@@ -2,6 +2,9 @@
 
 Hackathon build: **Multimodal Data Management Pipeline for RAG-Ready Systems**.
 
+🚀 **[Live Website / Demo](YOUR_NGROK_OR_VERCEL_LINK_HERE)**  
+🎥 **[2-Minute Pitch Video](YOUR_YOUTUBE_OR_DRIVE_LINK_HERE)**
+
 The system ingests **video, audio, images and PDFs**, decomposes each into structured,
 provenance-tracked evidence objects (transcript segments, visual frame descriptions,
 OCR text, document chunks), links evidence **across modalities and time** in a graph,
