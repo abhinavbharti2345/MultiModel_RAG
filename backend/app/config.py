@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     DATABASE_MODE: str = "auto"
 
     POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
+    POSTGRES_PORT: str | int = 5432
     POSTGRES_USER: str = "hackathon"
     POSTGRES_PASSWORD: str = "hackathon_pass"
     POSTGRES_DB: str = "multimodal_rag"
@@ -53,17 +53,18 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         mode = self.DATABASE_MODE.lower()
+        port = self.POSTGRES_PORT if self.POSTGRES_PORT else 5432
         if mode == "sqlite":
             return f"sqlite:///{self.SQLITE_PATH.resolve()}"
         if mode == "postgres":
-            return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{port}/{self.POSTGRES_DB}"
         try:
             import socket
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.5)
-            s.connect((self.POSTGRES_HOST, self.POSTGRES_PORT))
+            s.connect((self.POSTGRES_HOST, int(port)))
             s.close()
-            return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{port}/{self.POSTGRES_DB}"
         except Exception:
             return f"sqlite:///{self.SQLITE_PATH.resolve()}"
 
