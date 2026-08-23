@@ -52,6 +52,9 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
+        if self.POSTGRES_HOST.startswith("postgres://") or self.POSTGRES_HOST.startswith("postgresql://"):
+            return self.POSTGRES_HOST.replace("postgres://", "postgresql+psycopg2://")
+
         mode = self.DATABASE_MODE.lower()
         port = self.POSTGRES_PORT if self.POSTGRES_PORT else 5432
         if mode == "sqlite":
