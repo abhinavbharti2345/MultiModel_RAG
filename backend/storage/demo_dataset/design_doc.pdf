@@ -1,0 +1,123 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 594 >>
+stream
+BT /F2 16 Tf 60 760 Td (Multimodal RAG Platform - Architecture Design Document) Tj ET
+BT /F1 11 Tf 60 726 Td (Version 2.4 - Platform Team) Tj ET
+BT /F1 11 Tf 60 708 Td () Tj ET
+BT /F1 11 Tf 60 690 Td (1. Executive Summary) Tj ET
+BT /F1 11 Tf 60 672 Td (This document specifies the caching architecture agreed during the) Tj ET
+BT /F1 11 Tf 60 654 Td (quarterly architecture review led by Sarah Chen \(Principal Engineer\).) Tj ET
+BT /F1 11 Tf 60 636 Td (It accompanies the recorded meeting session and the annotated) Tj ET
+BT /F1 11 Tf 60 618 Td (caching diagram distributed to the team.) Tj ET
+endstream
+endobj
+4 0 obj
+<< /Length 572 >>
+stream
+BT /F2 16 Tf 60 760 Td (2. Background and Problem Statement) Tj ET
+BT /F1 11 Tf 60 726 Td (PostgreSQL read traffic grew 300% over the last quarter.) Tj ET
+BT /F1 11 Tf 60 708 Td (Peak-hour CPU utilization on the primary replica reached 85% and P95) Tj ET
+BT /F1 11 Tf 60 690 Td (query latency exceeded 1.2 seconds, violating our 200ms target.) Tj ET
+BT /F1 11 Tf 60 672 Td () Tj ET
+BT /F1 11 Tf 60 654 Td (Root cause: repeated execution of hot read queries that change rarely,) Tj ET
+BT /F1 11 Tf 60 636 Td (including product catalog lookups and user session joins.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Length 1030 >>
+stream
+BT /F2 16 Tf 60 760 Td (3. Proposed Solution: Redis Caching Layer) Tj ET
+BT /F1 11 Tf 60 726 Td (Section 3.2 - Data Flow) Tj ET
+BT /F1 11 Tf 60 708 Td (A Redis cache sits between application servers and PostgreSQL.) Tj ET
+BT /F1 11 Tf 60 690 Td () Tj ET
+BT /F1 11 Tf 60 672 Td (Read path:  App Server -> Redis -> \(on miss\) -> PostgreSQL,) Tj ET
+BT /F1 11 Tf 60 654 Td (            then populate Redis with TTL of 300 seconds \(5 minutes\).) Tj ET
+BT /F1 11 Tf 60 636 Td (Write path: App Server -> PostgreSQL first, then synchronously) Tj ET
+BT /F1 11 Tf 60 618 Td (            invalidate and refresh the matching Redis key) Tj ET
+BT /F1 11 Tf 60 600 Td (            \(write-through pattern\).) Tj ET
+BT /F1 11 Tf 60 582 Td () Tj ET
+BT /F1 11 Tf 60 564 Td (Expected impact: about 60% of read queries served from Redis,) Tj ET
+BT /F1 11 Tf 60 546 Td (reducing database load proportionally. See Figure 7-1, appendix page 7) Tj ET
+BT /F1 11 Tf 60 528 Td (for the complete annotated data-flow diagram discussed in the meeting.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Length 540 >>
+stream
+BT /F2 16 Tf 60 760 Td (4. Operational Notes) Tj ET
+BT /F1 11 Tf 60 726 Td (QPS target: 10,000 sustained. SLA: 99.9% availability.) Tj ET
+BT /F1 11 Tf 60 708 Td (If Redis is unavailable all traffic falls back to PostgreSQL;) Tj ET
+BT /F1 11 Tf 60 690 Td (Redis sits on the performance critical path, not the availability path.) Tj ET
+BT /F1 11 Tf 60 672 Td () Tj ET
+BT /F1 11 Tf 60 654 Td (Appendix reference: Figure 7-1 on page 7 mirrors the slide shown at) Tj ET
+BT /F1 11 Tf 60 636 Td (minute 00:40 in the recorded review session.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Length 912 >>
+stream
+BT /F2 16 Tf 60 760 Td (7. Appendix: Data Flow Diagram \(Figure 7-1\)) Tj ET
+BT /F1 11 Tf 60 726 Td (Redis + PostgreSQL Caching Architecture) Tj ET
+BT /F1 11 Tf 60 708 Td () Tj ET
+BT /F1 11 Tf 60 690 Td ([Clients] -> [API Gateway] -> [Load Balancers] -> [App Servers]) Tj ET
+BT /F1 11 Tf 60 672 Td (                                             /             \\) Tj ET
+BT /F1 11 Tf 60 654 Td (                              [Redis Cache] <             > [PostgreSQL]) Tj ET
+BT /F1 11 Tf 60 636 Td (                                TTL 300s                  write-through) Tj ET
+BT /F1 11 Tf 60 618 Td () Tj ET
+BT /F1 11 Tf 60 600 Td (Annotations:) Tj ET
+BT /F1 11 Tf 60 582 Td (- Read reduction target: 60%) Tj ET
+BT /F1 11 Tf 60 564 Td (- TTL: 5 minutes) Tj ET
+BT /F1 11 Tf 60 546 Td (- Proposed by: Sarah Chen, Principal Engineer) Tj ET
+BT /F1 11 Tf 60 528 Td (- Presented in meeting_recording.mp4 at 00:40) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+9 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+10 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+11 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 6 0 R >>
+endobj
+12 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+13 0 obj
+<< /Type /Pages /Kids [8 0 R 9 0 R 10 0 R 11 0 R 12 0 R ] /Count 5 >>
+endobj
+14 0 obj
+<< /Type /Catalog /Pages 13 0 R >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000000799 00000 n 
+0000001422 00000 n 
+0000002504 00000 n 
+0000003095 00000 n 
+0000004058 00000 n 
+0000004194 00000 n 
+0000004330 00000 n 
+0000004467 00000 n 
+0000004604 00000 n 
+0000004741 00000 n 
+0000004827 00000 n 
+trailer
+<< /Size 15 /Root 14 0 R >>
+startxref
+4878
+%%EOF

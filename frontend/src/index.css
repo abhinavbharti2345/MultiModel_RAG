@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.prose-answer h1, .prose-answer h2, .prose-answer h3 {
+  @apply font-semibold text-slate-900 mb-2 mt-3;
+}
+.prose-answer h1 { @apply text-lg; }
+.prose-answer h2 { @apply text-base; }
+.prose-answer p { @apply mb-2; }
+.prose-answer ul, .prose-answer ol { @apply pl-5 mb-2 space-y-1; }
+.prose-answer ul { @apply list-disc; }
+.prose-answer ol { @apply list-decimal; }
+.prose-answer code { @apply px-1 py-0.5 bg-slate-100 rounded text-sm; }
+.prose-answer strong { @apply font-semibold text-slate-900; }
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded; }
+.scrollbar-thin::-webkit-scrollbar-track { @apply bg-transparent; }
+
+@keyframes pulse-bar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-pulse-bar { animation: pulse-bar 1.4s ease-in-out infinite; }
