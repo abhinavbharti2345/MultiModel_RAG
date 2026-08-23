@@ -25,13 +25,20 @@ class QdrantService:
     def _get_client(self) -> QdrantClient:
         if self._client is None:
             try:
-                candidate = QdrantClient(
-                    host=self.host,
-                    port=self.port,
-                    grpc_port=self.grpc_port,
-                    prefer_grpc=False,
-                    timeout=3,
-                )
+                if settings.QDRANT_URL and settings.QDRANT_API_KEY:
+                    candidate = QdrantClient(
+                        url=settings.QDRANT_URL,
+                        api_key=settings.QDRANT_API_KEY,
+                        timeout=10,
+                    )
+                else:
+                    candidate = QdrantClient(
+                        host=self.host,
+                        port=self.port,
+                        grpc_port=self.grpc_port,
+                        prefer_grpc=False,
+                        timeout=3,
+                    )
                 candidate.get_collections()
                 self._client = candidate
                 logger.info(f"Connected to Qdrant at {self.host}:{self.port}")

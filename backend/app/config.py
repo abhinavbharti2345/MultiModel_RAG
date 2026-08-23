@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_GRPC_PORT: int = 6334
     QDRANT_COLLECTION: str = "evidence"
+    QDRANT_URL: str = ""
+    QDRANT_API_KEY: str = ""
 
     FFMPEG_PATH: str = "ffmpeg"
     FRAME_SAMPLE_INTERVAL: int = 3
