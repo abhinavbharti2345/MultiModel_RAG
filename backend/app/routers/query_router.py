@@ -27,43 +27,61 @@ async def query(
     req: QueryRequest,
     db: Session = Depends(get_db),
 ):
-    retrieval = RetrievalService(db)
-    evidence_hits = await retrieval.query(
-        query_text=req.query,
-        top_k=req.top_k,
-        expand_relationships=req.expand_relationships,
-        include_multimodal=req.include_multimodal,
-    )
-    if not evidence_hits:
-        return QueryResponse(
-            answer="No matching evidence was found in the index. Try rephrasing your question or uploading more documents/videos.",
-            provenance_summary=[],
-            evidence=[],
+    logger.info(f"[QUERY] Received query: {req.query}")
+    
+    try:
+        logger.info("[EMBEDDING] AND [QDRANT RETRIEVAL] AND [CROSS-MODAL EXPANSION] starting...")
+        retrieval = RetrievalService(db)
+        evidence_hits = await retrieval.query(
+            query_text=req.query,
+            top_k=req.top_k,
+            expand_relationships=req.expand_relationships,
+            include_multimodal=req.include_multimodal,
         )
+        if not evidence_hits:
+            logger.info("[QDRANT RETRIEVAL] No matching evidence found.")
+            return QueryResponse(
+                answer="No matching evidence was found in the index. Try rephrasing your question or uploading more documents/videos.",
+                provenance_summary=[],
+                evidence=[],
+            )
 
-    context = retrieval.build_context_prompt(evidence_hits)
-    answer_text = await llm_service.generate_answer(req.query, context)
+        logger.info("[CONTEXT BUILD] Building context prompt...")
+        context = retrieval.build_context_prompt(evidence_hits)
+        
+        logger.info("[LLM REQUEST] Requesting answer from Groq...")
+        answer_text = await llm_service.generate_answer(req.query, context)
+        logger.info("[LLM RESPONSE] Successfully parsed generated answer.")
 
-    provenance_summary = []
-    for hit in evidence_hits[:8]:
-        ev = hit.evidence
-        parts = []
-        parts.append(f"modality={ev.modality}")
-        if ev.timestamp_start is not None:
-            parts.append(f"ts={_fmt_ts(ev.timestamp_start)}")
-        if ev.page_number is not None:
-            parts.append(f"page={ev.page_number}")
-        if ev.speaker:
-            parts.append(f"speaker={ev.speaker}")
-        meta = ", ".join(parts)
-        snippet = ev.content[:80].replace("\n", " ")
-        provenance_summary.append(f"- [{meta}] {snippet}…")
+        provenance_summary = []
+        for hit in evidence_hits[:8]:
+            ev = hit.evidence
+            parts = []
+            parts.append(f"modality={ev.modality}")
+            if ev.timestamp_start is not None:
+                parts.append(f"ts={_fmt_ts(ev.timestamp_start)}")
+            if ev.page_number is not None:
+                parts.append(f"page={ev.page_number}")
+            if ev.speaker:
+                parts.append(f"speaker={ev.speaker}")
+            meta = ", ".join(parts)
+            snippet = ev.content[:80].replace("\n", " ")
+            provenance_summary.append(f"- [{meta}] {snippet}…")
 
-    return QueryResponse(
-        answer=answer_text,
-        provenance_summary=provenance_summary,
-        evidence=evidence_hits,
-    )
+        return QueryResponse(
+            answer=answer_text,
+            provenance_summary=provenance_summary,
+            evidence=evidence_hits,
+        )
+    except Exception as e:
+        logger.exception("[QUERY PIPELINE FAILED] Unhandled error during query processing")
+        # Provide a safe human-readable error while backend logs traceback
+        error_msg = str(e)
+        if "404" in error_msg and "LLM generation failed" in error_msg:
+            safe_detail = "The configured AI model is no longer available on the provider (Model Decommissioned). Please update the LLM model configuration."
+        else:
+            safe_detail = f"An error occurred while generating the answer: {error_msg}"
+        raise HTTPException(status_code=500, detail=safe_detail)
 
 
 @router.post("/evidence-only", response_model=list[EvidenceWithScore])

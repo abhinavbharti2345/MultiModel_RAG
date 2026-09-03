@@ -109,7 +109,7 @@ export function UploadPanel({ onUploaded }: Props) {
               {uploading ? "Uploading…" : "Drop file here or click to browse"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              MP4 / MOV / MKV · PDF · JPG / PNG · MP3 / WAV
+              MP4 / MP3 / PDF / Image
             </p>
             {uploading && (
               <div className="mt-4 max-w-sm mx-auto">

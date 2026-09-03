@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import type { HealthResponse, ProcessingJobResponse } from "./types";
+import type { HealthResponse, ProcessingJobResponse, SourceResponse } from "./types";
 import { UploadPanel } from "./components/UploadPanel";
 import { SourcesList } from "./components/SourcesList";
 import { QueryPanel } from "./components/QueryPanel";
@@ -9,6 +9,7 @@ export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+  const [sourcesData, setSourcesData] = useState<{sources: SourceResponse[], summary: Record<string, Record<string, unknown>>}>({sources: [], summary: {}});
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => undefined);
@@ -31,7 +32,7 @@ export default function App() {
               </svg>
             </div>
             <div>
-              <div className="font-semibold leading-tight text-white">Multimodal RAG</div>
+              <div className="font-semibold leading-tight text-slate-900">Multimodal RAG</div>
               <div className="text-[11px] text-slate-500 leading-tight">
                 Evidence Explorer · Video · Audio · PDF · Image
               </div>
@@ -77,12 +78,13 @@ export default function App() {
                 refreshNonce={refreshNonce}
                 selectedSourceId={selectedSourceId}
                 onSelect={setSelectedSourceId}
+                onSourcesUpdate={(sources, summary) => setSourcesData({ sources, summary })}
               />
             </div>
           </section>
 
           <section className="col-span-12 lg:col-span-7">
-            <QueryPanel />
+            <QueryPanel sources={sourcesData.sources} summaries={sourcesData.summary} />
           </section>
         </div>
       </main>

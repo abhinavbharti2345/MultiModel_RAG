@@ -42,3 +42,6 @@ docker-compose.override.yml
 *.log
 logs/
 backend/storage/
+
+# ---- Graphify ----
+graphify-out/

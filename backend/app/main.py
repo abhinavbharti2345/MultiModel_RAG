@@ -26,14 +26,17 @@ async def lifespan(app: FastAPI):
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning(f"DB init on startup failed (DB may not be ready yet): {e}")
-    from app.services.qdrant_service import qdrant_service
+    from app.services.qdrant_service import qdrant_service, QdrantConnectionError
     from app.services.embedding_service import embedding_service
     try:
-        _ = qdrant_service._get_client()
+        qdrant_service.health_check()
         _ = embedding_service.vector_size
         logger.info("Qdrant and embedding services initialized")
+    except QdrantConnectionError as e:
+        logger.error(f"QDRANT UNAVAILABLE: {e}")
+        logger.error("The application will start but ingestion and queries will fail until Qdrant is available.")
     except Exception as e:
-        logger.warning(f"Qdrant/embedder init warning: {e}")
+        logger.warning(f"Embedder init warning: {e}")
 
     # Clean up stuck tasks
     try:
@@ -123,8 +126,10 @@ from app.routers.upload_router import router as upload_router
 from app.routers.sources_router import router as sources_router
 from app.routers.query_router import router as query_router
 from app.routers.assets_router import router as assets_router
+from app.routers.health_router import router as health_router
 
 app.include_router(upload_router)
 app.include_router(sources_router)
 app.include_router(query_router)
 app.include_router(assets_router)
+app.include_router(health_router)

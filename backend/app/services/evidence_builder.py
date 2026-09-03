@@ -134,6 +134,10 @@ class EvidenceBuilder:
         combined_entities = list(dict.fromkeys(combined_entities))
 
         full_content = visual_content
+        if analysis.diagram_info and analysis.diagram_info.strip():
+            full_content += "\n\nDiagram / Flow:\n" + analysis.diagram_info.strip()
+        if analysis.relationships:
+            full_content += "\n\nRelationships:\n" + "\n".join(f"- {r}" for r in analysis.relationships)
         if analysis.ocr_text and analysis.ocr_text.strip():
             full_content += "\n\nVisible text / OCR:\n" + analysis.ocr_text.strip()
 
@@ -279,6 +283,46 @@ class EvidenceBuilder:
         self.db.flush()
         return rel
 
+    def link_shared_entities_bulk(self, evidence_list: list[Evidence], min_shared: int = 1) -> None:
+        if not evidence_list:
+            return
+            
+        ev_ids = [e.id for e in evidence_list]
+        ev_entities = self.db.query(EvidenceEntity).filter(EvidenceEntity.evidence_id.in_(ev_ids)).all()
+        
+        from collections import defaultdict
+        entity_to_evs = defaultdict(list)
+        for ee in ev_entities:
+            entity_to_evs[ee.entity_id].append(ee.evidence_id)
+            
+        pair_counts = defaultdict(int)
+        for entity_id, evidence_ids in entity_to_evs.items():
+            for i in range(len(evidence_ids)):
+                for j in range(i + 1, len(evidence_ids)):
+                    a, b = evidence_ids[i], evidence_ids[j]
+                    if a > b:
+                        a, b = b, a
+                    pair_counts[(a, b)] += 1
+                    
+        modality_map = {e.id: e.modality for e in evidence_list}
+        
+        new_rels = []
+        for (a_id, b_id), shared_count in pair_counts.items():
+            if shared_count >= min_shared:
+                if modality_map.get(a_id) != modality_map.get(b_id):
+                    confidence = min(0.95, 0.5 + 0.1 * shared_count)
+                    new_rels.append(Relationship(
+                        from_evidence_id=a_id,
+                        to_evidence_id=b_id,
+                        relationship_type="shares_entities_with",
+                        confidence=confidence,
+                        rel_metadata={"shared_entity_count": shared_count},
+                    ))
+                    
+        if new_rels:
+            self.db.bulk_save_objects(new_rels)
+            self.db.flush()
+
     def link_shared_entity(
         self,
         ev_a: Evidence,
@@ -329,18 +373,81 @@ class EvidenceBuilder:
         self.db.flush()
         return rel
 
+    def link_explains_bulk(
+        self,
+        transcript_evs: list[Evidence],
+        visual_evs: list[Evidence],
+        max_gap: float = 8.0,
+    ) -> None:
+        if not transcript_evs or not visual_evs:
+            return
+            
+        # Sort visuals by timestamp
+        visual_evs = sorted([v for v in visual_evs if v.timestamp_start is not None], key=lambda x: x.timestamp_start)
+        if not visual_evs:
+            return
+            
+        new_rels = []
+        for tev in transcript_evs:
+            t_mid = ((tev.timestamp_start or 0) + (tev.timestamp_end or 0)) / 2.0
+            
+            # Binary search or scan could be used, but since visual_evs is usually < 1000 frames,
+            # a simple window scan is fine if we early break
+            for vev in visual_evs:
+                v_mid = vev.timestamp_start
+                if v_mid > t_mid + max_gap:
+                    break # passed the window
+                if v_mid >= t_mid - max_gap:
+                    new_rels.append(Relationship(
+                        from_evidence_id=tev.id,
+                        to_evidence_id=vev.id,
+                        relationship_type="explains",
+                        confidence=0.9,
+                        rel_metadata={},
+                    ))
+                    new_rels.append(Relationship(
+                        from_evidence_id=vev.id,
+                        to_evidence_id=tev.id,
+                        relationship_type="is_explained_by",
+                        confidence=0.9,
+                        rel_metadata={},
+                    ))
+        if new_rels:
+            self.db.bulk_save_objects(new_rels)
+            self.db.flush()
+
     def link_same_source(self, evidence_list: list[Evidence], same_frame_max_gap: float = 2.0) -> None:
         sorted_by_time = sorted(
             [e for e in evidence_list if e.timestamp_start is not None],
             key=lambda e: e.timestamp_start or 0,
         )
+        new_rels = []
         for i in range(len(sorted_by_time)):
             for j in range(i + 1, len(sorted_by_time)):
                 a, b = sorted_by_time[i], sorted_by_time[j]
                 gap = (b.timestamp_start or 0) - (a.timestamp_start or 0)
                 if gap > same_frame_max_gap:
                     break
-                self.link_temporal(a, b, max_gap_seconds=same_frame_max_gap)
+                
+                confidence = max(0.5, 1.0 - (gap / same_frame_max_gap) * 0.5)
+                new_rels.append(Relationship(
+                    from_evidence_id=a.id,
+                    to_evidence_id=b.id,
+                    relationship_type="temporally_coincident_with",
+                    confidence=confidence,
+                    rel_metadata={"gap_seconds": gap},
+                ))
+                new_rels.append(Relationship(
+                    from_evidence_id=b.id,
+                    to_evidence_id=a.id,
+                    relationship_type="temporally_coincident_with",
+                    confidence=confidence,
+                    rel_metadata={"gap_seconds": gap},
+                ))
+                
+        if new_rels:
+            self.db.bulk_save_objects(new_rels)
+            self.db.flush()
 
     @staticmethod
     def _fmt_ts(seconds: Optional[float]) -> str:

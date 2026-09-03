@@ -30,7 +30,9 @@ class VideoProcessor:
         self.ffmpeg_path = settings.FFMPEG_PATH
         self.sample_interval = settings.FRAME_SAMPLE_INTERVAL
         self.scene_threshold = settings.SCENE_CHANGE_THRESHOLD
-        self.max_important_frames = settings.MAX_IMPORTANT_FRAMES
+        self.max_important_frames = getattr(settings, "MAX_IMPORTANT_FRAMES", 30)
+        self.corr_thresh = getattr(settings, "SCENE_CORR_THRESHOLD", 0.80)
+        self.pixel_diff_thresh = getattr(settings, "SCENE_PIXEL_DIFF_THRESHOLD", 0.08)
 
     def _check_tools(self) -> None:
         if shutil.which(self.ffmpeg_path) is None:
@@ -101,11 +103,22 @@ class VideoProcessor:
         subprocess.run(cmd, capture_output=True, check=True, timeout=600)
         return output_audio_path
 
-    def _frame_difference(self, prev_gray: np.ndarray, curr_gray: np.ndarray) -> float:
-        if prev_gray.shape != curr_gray.shape:
-            return 100.0
-        diff = cv2.absdiff(prev_gray, curr_gray)
-        return float(np.mean(diff))
+    def _extract_features(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        small = cv2.resize(frame, (320, int(320 * frame.shape[0] / max(1, frame.shape[1]))))
+        hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
+        hist = cv2.calcHist([hsv], [0, 1], None, [32, 32], [0, 180, 0, 256])
+        cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        return hist, gray
+
+    def _compare_features(self, feat1, feat2) -> tuple[float, float]:
+        hist1, gray1 = feat1
+        hist2, gray2 = feat2
+        hist_corr = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
+        diff = cv2.absdiff(gray1, gray2)
+        _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
+        changed_pixels = cv2.countNonZero(thresh) / thresh.size
+        return hist_corr, changed_pixels
 
     def sample_frames(
         self,
@@ -128,9 +141,12 @@ class VideoProcessor:
             logger.info(f"Video: {total_frames} frames, {fps:.2f} fps, {duration:.1f}s, step={frame_step}")
 
             sampled_frames: list[ExtractedFrame] = []
-            prev_gray: Optional[np.ndarray] = None
+            prev_feat = None
+            saved_features = []
+            
             frame_idx = 0
             saved_idx = 0
+            num_important = 0
 
             while True:
                 ret, frame = cap.read()
@@ -141,10 +157,35 @@ class VideoProcessor:
                     timestamp = frame_idx / fps if fps > 0 else frame_idx / 30.0
                     height, width = frame.shape[:2]
 
-                    small = cv2.resize(frame, (320, int(320 * height / width)))
-                    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
-                    scene_score = self._frame_difference(prev_gray, gray) if prev_gray is not None else 0.0
-                    prev_gray = gray
+                    feat = self._extract_features(frame)
+                    
+                    is_important = False
+                    scene_score = 0.0
+                    
+                    if prev_feat is None:
+                        is_important = True
+                    else:
+                        h_corr, p_diff = self._compare_features(prev_feat, feat)
+                        scene_score = (1.0 - h_corr) * 10.0 + (p_diff * 10.0)
+                        
+                        if h_corr < self.corr_thresh or p_diff > self.pixel_diff_thresh:
+                            is_dup = False
+                            for s_feat in saved_features[-5:]:
+                                ch, cp = self._compare_features(s_feat, feat)
+                                if ch > 0.95 and cp < 0.02:
+                                    is_dup = True
+                                    break
+                            if not is_dup:
+                                is_important = True
+
+                    if is_important:
+                        if num_important >= self.max_important_frames:
+                            is_important = False
+                        else:
+                            num_important += 1
+                            saved_features.append(feat)
+
+                    prev_feat = feat
 
                     frame_filename = f"frame_{saved_idx:06d}_{timestamp:.1f}s.jpg"
                     frame_path = output_frames_dir / frame_filename
@@ -157,6 +198,7 @@ class VideoProcessor:
                         width=width,
                         height=height,
                         scene_score=scene_score,
+                        is_important=is_important,
                     ))
                     saved_idx += 1
 
@@ -168,48 +210,15 @@ class VideoProcessor:
         finally:
             cap.release()
 
-        logger.info(f"Sampled {len(sampled_frames)} frames total. Running scene detection...")
-        return self._select_important_frames(sampled_frames, progress_callback)
-
-    def _select_important_frames(
-        self,
-        frames: list[ExtractedFrame],
-        progress_callback: Optional[Callable[[float, str], None]] = None,
-    ) -> list[ExtractedFrame]:
-        if not frames:
-            return frames
-
-        scores = np.array([f.scene_score for f in frames])
-        z_scores = np.zeros_like(scores, dtype=float)
-        if len(scores) > 1:
-            mean = scores.mean()
-            std = scores.std() + 1e-6
-            z_scores = (scores - mean) / std
-            threshold = self.scene_threshold / 100.0
-            important_mask = z_scores > threshold
-        else:
-            important_mask = np.array([True])
-
-        num_important = int(important_mask.sum())
-        max_keep = self.max_important_frames
-
-        if num_important > max_keep:
-            top_indices = np.argsort(-z_scores)[:max_keep]
-            important_mask = np.zeros_like(important_mask, dtype=bool)
-            important_mask[top_indices] = True
-            num_important = max_keep
-        elif num_important == 0 and len(frames) > 0:
-            every_n = max(1, len(frames) // min(max_keep, len(frames)))
-            important_mask[::every_n] = True
-            num_important = int(important_mask.sum())
-
-        for i, f in enumerate(frames):
-            f.is_important = bool(important_mask[i])
-
-        logger.info(f"Selected {num_important} important frames out of {len(frames)}")
+        logger.info(f"Sampled {len(sampled_frames)} frames total. {num_important} important.")
         if progress_callback:
-            progress_callback(99.0, f"Selected {num_important} important frames")
-        return frames
+            progress_callback(100.0, f"Finished frame sampling")
+        
+        # If no important frames were selected (e.g. static video with no changes), select the first one
+        if num_important == 0 and len(sampled_frames) > 0:
+            sampled_frames[0].is_important = True
+            
+        return sampled_frames
 
 
 video_processor = VideoProcessor()

@@ -6,12 +6,24 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=True)
 
     GROQ_API_KEY: str = ""
+    GROQ_API_KEY_1: str = ""
     GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_WHISPER_MODEL: str = "whisper-large-v3"
     GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
 
+    # --- Context / evidence budget ---
+    # Tokens reserved for the answer + question + prompt framing.
+    # Evidence receives: LLM_CONTEXT_WINDOW_TOKENS - LLM_ANSWER_RESERVE_TOKENS.
+    # Override LLM_CONTEXT_WINDOW_TOKENS to 0 to let llm_service.py auto-detect
+    # from the known model table.
+    LLM_CONTEXT_WINDOW_TOKENS: int = 4096
+    LLM_ANSWER_RESERVE_TOKENS: int = 2048  # question + answer + framing overhead
+
     VLM_API_URL: str = ""
     VLM_API_KEY: str = ""
+    VLM_API_KEY_1: str = ""
+    VLM_API_KEY_2: str = ""
+    VLM_API_KEY_3: str = ""
     VLM_MODEL: str = ""
 
     EMBEDDING_API_URL: str = ""

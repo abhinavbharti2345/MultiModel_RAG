@@ -13,9 +13,10 @@ interface Props {
   refreshNonce: number;
   selectedSourceId: string | null;
   onSelect: (id: string | null) => void;
+  onSourcesUpdate?: (sources: SourceResponse[], summary: Record<string, Record<string, unknown>>) => void;
 }
 
-export function SourcesList({ refreshNonce, selectedSourceId, onSelect }: Props) {
+export function SourcesList({ refreshNonce, selectedSourceId, onSelect, onSourcesUpdate }: Props) {
   const [sources, setSources] = useState<SourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Record<string, Record<string, unknown>>>({});
@@ -84,6 +85,12 @@ export function SourcesList({ refreshNonce, selectedSourceId, onSelect }: Props)
       cancelled = true;
     };
   }, [sources, summary]);
+
+  useEffect(() => {
+    if (onSourcesUpdate) {
+      onSourcesUpdate(sources, summary);
+    }
+  }, [sources, summary, onSourcesUpdate]);
 
   const sorted = useMemo(
     () => [...sources].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),

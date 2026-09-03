@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal RAG Pipeline Architecture - Warm Aesthetic Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #121016;
+            color: #f5f5f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .infographic-container {
+            width: 1280px;
+            height: 720px;
+            /* 16:9 Aspect Ratio */
+            background: #17141e;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #2d2638;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 2.25rem;
+        }
+
+        /* Subtle warm dot grid background */
+        .infographic-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(#2d2638 1px, transparent 1px);
+            background-size: 24px 24px;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .title {
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #fafaf9;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #a8a29e;
+            font-weight: 500;
+        }
+
+        .glass-card {
+            background: #1d1926;
+            border: 1px solid #2d2638;
+            border-radius: 14px;
+            padding: 1.1rem;
+        }
+
+        .tool-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .badge-subtle {
+            background: #262130;
+            border: 1px solid #3d334e;
+            color: #d6d3d1;
+        }
+
+        .badge-amber {
+            background: rgba(217, 119, 6, 0.15);
+            border: 1px solid rgba(217, 119, 6, 0.35);
+            color: #fbbf24;
+        }
+
+        .badge-copper {
+            background: rgba(234, 88, 12, 0.15);
+            border: 1px solid rgba(234, 88, 12, 0.35);
+            color: #fdba74;
+        }
+
+        .badge-terracotta {
+            background: rgba(225, 29, 72, 0.15);
+            border: 1px solid rgba(225, 29, 72, 0.35);
+            color: #fda4af;
+        }
+
+        .badge-warm-emerald {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            color: #6ee7b7;
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a8a29e;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .node-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #241f30;
+            border: 1px solid #3d334e;
+            color: #d6d3d1;
+            flex-shrink: 0;
+        }
+
+        .flow-card {
+            background: #211c2b;
+            border: 1px solid #332b40;
+            border-radius: 10px;
+            padding: 0.65rem 0.8rem;
+            position: relative;
+        }
+
+        .step-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            width: 20px;
+            height: 20px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #2d2638;
+            color: #f5f5f4;
+            border: 1px solid #443954;
+        }
+
+        .stage-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #78716c;
+        }
+
+        .connector-bar {
+            background: #1d1926;
+            border: 1px solid #2d2638;
+            border-radius: 12px;
+            padding: 0.55rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+
+        .flow-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 0.22rem 0.7rem;
+            border-radius: 9999px;
+            background: #262033;
+            border: 1px solid #3e3352;
+            color: #e7e5e4;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="infographic-container">
+
+        <div class="content-wrapper">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-3 pb-3 border-b border-[#2d2638]">
+                <div>
+                    <h1 class="title">RAG Pipeline — System Architecture</h1>
+                    <div class="subtitle mt-0.5">End-to-End Multimodal Data Ingestion, Cross-Modal Linking & Grounded
+                        LLM Response</div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="tool-badge badge-subtle">FastAPI</span>
+                    <span class="tool-badge badge-amber">Qdrant DB</span>
+                    <span class="tool-badge badge-copper">PostgreSQL</span>
+                    <span class="tool-badge badge-terracotta">Groq LLM</span>
+                </div>
+            </div>
+
+            <!-- TOP ROW: 50 / 50 Equal Split for Pipelines -->
+            <div class="grid grid-cols-2 gap-5 h-[270px]">
+
+                <!-- Left 50%: Offline Indexing Pipeline -->
+                <div class="glass-card flex flex-col justify-between h-full">
+                    <div class="section-label">
+                        <div class="flex items-center gap-2">
+                            <span class="step-pill">01</span>
+                            <span class="text-stone-200 font-semibold">Offline Indexing Pipeline</span>
+                        </div>
+                        <span class="mono text-[10px] text-stone-400">Ingestion & Linking</span>
+                    </div>
+
+                    <!-- Pipeline Flow -->
+                    <div class="flex items-center justify-between gap-2 h-full">
+
+                        <!-- Inputs -->
+                        <div class="flex flex-col gap-2 w-1/3">
+                            <div class="mono text-[11px] font-medium text-stone-400">1. Inputs</div>
+                            <div class="flow-card flex items-center justify-between">
+                                <span class="text-xs font-medium text-stone-200">Video</span>
+                                <span class="tool-badge badge-subtle">FFmpeg</span>
+                            </div>
+                            <div class="flow-card flex items-center justify-between">
+                                <span class="text-xs font-medium text-stone-200">Images</span>
+                                <span class="tool-badge badge-subtle">OpenCV</span>
+                            </div>
+                            <div class="flow-card flex items-center justify-between">
+                                <span class="text-xs font-medium text-stone-200">PDFs</span>
+                                <span class="tool-badge badge-subtle">pypdf</span>
+                            </div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="stage-arrow">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- Processors -->
+                        <div class="flex flex-col gap-2 w-1/3">
+                            <div class="mono text-[11px] font-medium text-stone-400">2. Extractors</div>
+                            <div class="flow-card">
+                                <div class="text-xs font-semibold text-amber-300">Whisper STT</div>
+                                <div class="text-[10px] text-stone-400">Audio Speech-to-Text</div>
+                            </div>
+                            <div class="flow-card">
+                                <div class="text-xs font-semibold text-copper-300">Groq VLM</div>
+                                <div class="text-[10px] text-stone-400">Diagram OCR & Scene</div>
+                            </div>
+                            <div class="flow-card">
+                                <div class="text-xs font-semibold text-stone-200">Chunker</div>
+                                <div class="mono text-[10px] text-amber-400">700c / 180o</div>
+                            </div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="stage-arrow">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- Evidence Builder -->
+                        <div class="flex flex-col gap-2 w-1/3">
+                            <div class="mono text-[11px] font-medium text-stone-400">3. Builder</div>
+                            <div
+                                class="flow-card border-amber-500/30 bg-amber-950/20 h-full flex flex-col justify-between p-2.5">
+                                <div class="flex items-center gap-1.5">
+                                    <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+                                    <span class="text-xs font-semibold text-stone-100">Evidence Builder</span>
+                                </div>
+                                <div class="flex flex-col gap-1 text-[10px] mono">
+                                    <div class="flex justify-between"><span class="text-stone-400">Vectors</span> <span
+                                            class="text-amber-300">FastEmbed</span></div>
+                                    <div class="flex justify-between"><span class="text-stone-400">Entities</span> <span
+                                            class="text-amber-300">Regex NER</span></div>
+                                    <div class="flex justify-between"><span class="text-stone-400">Edges</span> <span
+                                            class="text-orange-300">4 Types</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Right 50%: Real-Time Query Pipeline -->
+                <div class="glass-card flex flex-col justify-between h-full">
+                    <div class="section-label">
+                        <div class="flex items-center gap-2">
+                            <span class="step-pill">02</span>
+                            <span class="text-stone-200 font-semibold">Real-Time Query Pipeline</span>
+                        </div>
+                        <span class="mono text-[10px] text-stone-400">Retrieval & LLM</span>
+                    </div>
+
+                    <!-- Pipeline Flow -->
+                    <div class="flex items-center justify-between gap-2 h-full">
+
+                        <!-- Query Input -->
+                        <div class="flex flex-col gap-2 w-1/3">
+                            <div class="mono text-[11px] font-medium text-stone-400">1. Query</div>
+                            <div class="flow-card flex flex-col gap-1.5 p-2.5">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="node-icon !w-5 !h-5 text-amber-400"><i data-lucide="user"
+                                            class="w-3 h-3"></i></div>
+                                    <span class="text-xs font-semibold text-stone-200">User Query</span>
+                                </div>
+                                <div class="text-[10px] text-stone-400 italic">"Who discussed diagram?"</div>
+                                <div class="flex items-center justify-between mt-1">
+                                    <span class="mono text-[9px] text-stone-400">FastEmbed</span>
+                                    <span class="tool-badge badge-subtle">Vectors</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="stage-arrow">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- Hybrid Search -->
+                        <div class="flex flex-col gap-2 w-1/3">
+                            <div class="mono text-[11px] font-medium text-stone-400">2. Hybrid Search</div>
+                            <div class="flow-card">
+                                <div class="text-xs font-semibold text-amber-300 flex items-center gap-1">
+                                    <i data-lucide="search" class="w-3 h-3"></i> Semantic Search
+                                </div>
+                                <div class="text-[10px] text-stone-400">Vector Top-K Match</div>
+                            </div>
+                            <div class="flow-card">
+                                <div class="text-xs font-semibold text-orange-300 flex items-center gap-1">
+                                    <i data-lucide="git-fork" class="w-3 h-3"></i> Graph Hop
+                                </div>
+                                <div class="text-[10px] text-stone-400">Cross-Modal (≤1 Hop)</div>
+                            </div>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="stage-arrow">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- Grounded Generation -->
+                        <div class="flex flex-col gap-2 w-1/3">
+                            <div class="mono text-[11px] font-medium text-stone-400">3. Generation</div>
+                            <div
+                                class="flow-card border-amber-500/30 bg-amber-950/20 p-2.5 flex flex-col justify-between">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-semibold text-amber-300">Groq LLM</span>
+                                    <span class="tool-badge badge-amber">Llama-3</span>
+                                </div>
+                                <div
+                                    class="bg-amber-900/30 border border-amber-500/30 rounded-md p-1.5 flex items-center gap-1.5">
+                                    <i data-lucide="check-circle" class="w-3.5 h-3.5 text-amber-400 flex-shrink-0"></i>
+                                    <span class="text-[10px] font-semibold text-amber-200 leading-tight">Grounded Answer
+                                        + Citations</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- MIDDLE CONNECTOR BAR -->
+            <div class="connector-bar my-1">
+                <div class="flex items-center gap-2">
+                    <span class="mono text-xs font-medium text-stone-300">Evidence Builder</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-stone-500"></i>
+                    <span class="flow-pill"><i data-lucide="layers" class="w-3 h-3 text-amber-400"></i> Index Multimodal
+                        Vectors</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-stone-500"></i>
+                    <span class="mono text-xs font-medium text-amber-300">Qdrant Vector DB</span>
+                </div>
+
+                <div class="h-4 w-px bg-stone-700"></div>
+
+                <div class="flex items-center gap-2">
+                    <span class="mono text-xs font-medium text-stone-300">Evidence Builder</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-stone-500"></i>
+                    <span class="flow-pill"><i data-lucide="git-merge" class="w-3 h-3 text-orange-400"></i> Index
+                        Relational Graph</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-stone-500"></i>
+                    <span class="mono text-xs font-medium text-orange-300">PostgreSQL Graph</span>
+                </div>
+            </div>
+
+            <!-- BOTTOM ROW: 3 Equal-Width Columns for Storage Layer -->
+            <div class="grid grid-cols-3 gap-5 h-[195px]">
+
+                <!-- 1. Qdrant Vector Engine -->
+                <div class="glass-card flex flex-col justify-between border-amber-500/20">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                                <i data-lucide="database" class="w-4 h-4 text-amber-400"></i> Qdrant Vector Store
+                            </span>
+                            <span class="tool-badge badge-amber">Payload DB</span>
+                        </div>
+                        <p class="text-[11px] text-stone-400 leading-relaxed mb-2">
+                            High-dimensional embeddings for transcripts, video frames, OCR text, and document chunks.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-1 mono text-[9px] text-stone-300">
+                        <span class="bg-[#241f30] px-2 py-0.5 rounded border border-[#3d334e]">source_id</span>
+                        <span class="bg-[#241f30] px-2 py-0.5 rounded border border-[#3d334e]">timestamps</span>
+                        <span class="bg-[#241f30] px-2 py-0.5 rounded border border-[#3d334e]">speaker</span>
+                        <span class="bg-[#241f30] px-2 py-0.5 rounded border border-[#3d334e]">page_num</span>
+                    </div>
+                </div>
+
+                <!-- 2. PostgreSQL Graph Store -->
+                <div class="glass-card flex flex-col justify-between border-orange-500/20">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-orange-300 flex items-center gap-1.5">
+                                <i data-lucide="git-merge" class="w-4 h-4 text-orange-400"></i> PostgreSQL / SQLite
+                                Graph
+                            </span>
+                            <span class="tool-badge badge-copper">SQLAlchemy</span>
+                        </div>
+                        <p class="text-[11px] text-stone-400 leading-relaxed mb-2">
+                            Relational schemas, extracted NER entities, and typed cross-modality relationship edges.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1 mono text-[9px] text-stone-300">
+                        <div class="bg-[#241f30] p-1 rounded border border-[#3d334e]">• explains</div>
+                        <div class="bg-[#241f30] p-1 rounded border border-[#3d334e]">• is_explained_by</div>
+                        <div class="bg-[#241f30] p-1 rounded border border-[#3d334e]">• coincident_with</div>
+                        <div class="bg-[#241f30] p-1 rounded border border-[#3d334e]">• shares_entities</div>
+                    </div>
+                </div>
+
+                <!-- 3. Grounded Traceability -->
+                <div class="glass-card flex flex-col justify-between border-rose-500/20">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-rose-300 flex items-center gap-1.5">
+                                <i data-lucide="shield-check" class="w-4 h-4 text-rose-400"></i> Provenance Traceability
+                            </span>
+                            <span class="tool-badge badge-terracotta">Zero Invention</span>
+                        </div>
+                        <p class="text-[11px] text-stone-400 leading-relaxed mb-2">
+                            Strict prompt enforcement weighting visual/written specs over speech, returning exact origin
+                            proof.
+                        </p>
+                    </div>
+                    <div
+                        class="bg-amber-950/20 border border-amber-500/30 p-2 rounded-md text-[10px] text-amber-300 font-medium flex items-center gap-2">
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-amber-400 flex-shrink-0"></i>
+                        <span>100% Traceability across Media, Pages, Speakers & Timestamps</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

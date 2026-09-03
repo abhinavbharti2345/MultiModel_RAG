@@ -115,7 +115,7 @@ class Frame(Base):
 
     id = _uuid_pk()
     source_id = _uuid_fk("sources.id", nullable=False)
-    timestamp_seconds = Column(Float, nullable=False)
+    timestamp_seconds = Column(Float, nullable=True)
     frame_path = Column(Text, nullable=False)
     frame_number = Column(Integer)
     width = Column(Integer)

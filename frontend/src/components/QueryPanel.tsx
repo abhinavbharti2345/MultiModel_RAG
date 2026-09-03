@@ -1,19 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { api } from "../api";
-import type { QueryResponse } from "../types";
+import type { QueryResponse, SourceResponse } from "../types";
 import { EvidenceCard } from "./EvidenceCard";
 import { AnswerRenderer } from "./AnswerRenderer";
 
-const SAMPLE_QUESTIONS = [
-  "Summarize the main topics discussed in the uploaded files.",
-  "Are there any architecture diagrams or charts? What do they show?",
-  "List the key takeaways and explain who presented them.",
-  "Find any mentions of specific dates, metrics, or targets.",
-  "What are the main problems or challenges highlighted in the evidence?",
-];
+interface Props {
+  sources?: SourceResponse[];
+  summaries?: Record<string, Record<string, unknown>>;
+}
 
-export function QueryPanel() {
-  const [question, setQuestion] = useState(SAMPLE_QUESTIONS[0]);
+export function QueryPanel({ sources = [], summaries = {} }: Props) {
+  const [question, setQuestion] = useState("");
   const [topK, setTopK] = useState(10);
   const [expandRelations, setExpandRelations] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -40,6 +37,11 @@ export function QueryPanel() {
       setLoading(false);
     }
   }
+
+  const isCurrentlyProcessing = sources.length > 0 && sources.every(s => !["completed", "failed"].includes(s.status));
+  const disableAnswer = loading || !question.trim() || isCurrentlyProcessing;
+
+
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -104,7 +106,7 @@ export function QueryPanel() {
               <button
                 type="submit"
                 className="px-4 py-1.5 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                disabled={loading || !question.trim()}
+                disabled={disableAnswer}
               >
                 {loading ? (
                   <>
@@ -124,34 +126,39 @@ export function QueryPanel() {
             </div>
           </div>
 
-          <div className="pt-1">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Try these
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {SAMPLE_QUESTIONS.map((q) => (
-                <button
-                  type="button"
-                  key={q}
-                  onClick={() => setQuestion(q)}
-                  className={`text-xs px-2 py-1 rounded-md border transition
-                    ${
-                      question === q
-                        ? "bg-brand-50 border-brand-300 text-brand-700"
-                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
-                >
-                  {q.length > 70 ? q.slice(0, 70) + "…" : q}
-                </button>
-              ))}
-            </div>
-          </div>
         </form>
       </div>
 
+      {isCurrentlyProcessing && (
+        <div className="mb-4 rounded-lg bg-sky-50 border border-sky-200 p-4 text-sm text-sky-800 flex items-center gap-3">
+          <span className="inline-block w-4 h-4 border-2 border-sky-300 border-t-sky-700 rounded-full animate-spin" />
+          <span>Evidence is currently being indexed. Queries will be available once processing completes.</span>
+        </div>
+      )}
+
       {error && (
-        <div className="mb-4 rounded-lg bg-rose-50 border border-rose-200 p-4 text-sm text-rose-800">
-          {error}
+        <div className={`mb-4 rounded-lg border p-4 text-sm ${error.includes('429') ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+          {error.includes('429') ? (
+            <div>
+              <div className="font-semibold text-amber-900 mb-1 flex items-center gap-2">
+                <span>⚠️</span> AI Service temporarily unavailable
+              </div>
+              <p className="mb-2">The AI service is currently rate-limited.</p>
+              <p className="mb-3 text-amber-700">Your uploaded documents, videos, and indexed data are completely safe.</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={runQuery}
+                  className="px-4 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded font-medium transition"
+                >
+                  Retry Now
+                </button>
+                <span className="text-amber-700 text-xs italic">{error}</span>
+              </div>
+            </div>
+          ) : (
+            error
+          )}
         </div>
       )}
 

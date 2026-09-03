@@ -259,22 +259,12 @@ class IngestionOrchestrator:
         evidence_list = self.storage.get_evidence_for_source(source_id)
         self.builder.link_same_source(evidence_list, same_frame_max_gap=5.0)
 
-        for i, a in enumerate(evidence_list):
-            for b in evidence_list[i + 1:]:
-                if a.modality != b.modality:
-                    self.builder.link_shared_entity(a, b, min_shared=1)
+        self.builder.link_shared_entities_bulk(evidence_list, min_shared=1)
 
         transcript_evs = [e for e in evidence_list if e.modality == ModalityType.AUDIO]
         visual_evs = [e for e in evidence_list if e.modality == ModalityType.VISUAL]
-        for tev in transcript_evs:
-            t_mid = ((tev.timestamp_start or 0) + (tev.timestamp_end or 0)) / 2.0
-            for vev in visual_evs:
-                v_mid = (vev.timestamp_start or 0)
-                if abs(t_mid - v_mid) < 8.0:
-                    try:
-                        self.builder.link_explains(tev, vev)
-                    except Exception:
-                        pass
+        self.builder.link_explains_bulk(transcript_evs, visual_evs, max_gap=8.0)
+        
         self.db.commit()
 
         self.storage.update_source_status(
@@ -418,7 +408,7 @@ class IngestionOrchestrator:
                         w, h = im.size
                     frame_obj = Frame(
                         source_id=source_id,
-                        timestamp_seconds=float(page.page_number), # use page num as timestamp for ordering
+                        timestamp_seconds=None,
                         frame_path=str(img_path),
                         frame_number=page.page_number,
                         width=w,
@@ -447,7 +437,8 @@ class IngestionOrchestrator:
                         source_id=source_id,
                         frame_id=frame_obj.id,
                         analysis=analysis,
-                        timestamp_seconds=float(page.page_number),
+                        timestamp_seconds=None,
+                        page_number=page.page_number,
                     )
                 except Exception as e:
                     logger.warning(f"Failed to process PDF image {img_path_str}: {e}")
@@ -484,7 +475,7 @@ class IngestionOrchestrator:
             w, h = 0, 0
         frame_obj = Frame(
             source_id=source_id,
-            timestamp_seconds=0.0,
+            timestamp_seconds=None,
             frame_path=str(image_path),
             frame_number=0,
             width=w,
@@ -525,7 +516,7 @@ class IngestionOrchestrator:
             source_id=source_id,
             frame_id=frame_obj.id,
             analysis=analysis,
-            timestamp_seconds=0.0,
+            timestamp_seconds=None,
         )
         if analysis.ocr_text and analysis.ocr_text.strip():
             try:

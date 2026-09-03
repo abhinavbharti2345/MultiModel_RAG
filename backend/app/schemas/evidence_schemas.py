@@ -96,6 +96,8 @@ class VisualAnalysisResult(BaseModel):
     ocr_text: Optional[str] = None
     entities: list[str] = Field(default_factory=list)
     objects_detected: list[str] = Field(default_factory=list)
+    relationships: list[str] = Field(default_factory=list)
+    diagram_info: Optional[str] = None
 
 
 class QueryRequest(BaseModel):
