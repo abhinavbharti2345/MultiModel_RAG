@@ -43,5 +43,12 @@ docker-compose.override.yml
 logs/
 backend/storage/
 
+# ---- Executables & Binaries ----
+*.exe
+*.dll
+*.so
+*.dylib
+backend/qdrant/
+
 # ---- Graphify ----
 graphify-out/
