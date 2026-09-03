@@ -4,103 +4,203 @@ import type { HealthResponse, ProcessingJobResponse, SourceResponse } from "./ty
 import { UploadPanel } from "./components/UploadPanel";
 import { SourcesList } from "./components/SourcesList";
 import { QueryPanel } from "./components/QueryPanel";
+import { GraphExplorer } from "./components/GraphExplorer";
+import { QdrantExplorer } from "./components/QdrantExplorer";
+import { SourcesExplorer } from "./components/SourcesExplorer";
+import { Sparkles, Folder, GitFork, Database, ChevronRight, RefreshCw, Cpu, Layers } from "lucide-react";
+
+type NavigationTab = "query" | "sources" | "graph" | "qdrant";
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<NavigationTab>("query");
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
-  const [sourcesData, setSourcesData] = useState<{sources: SourceResponse[], summary: Record<string, Record<string, unknown>>}>({sources: [], summary: {}});
+  const [sourcesData, setSourcesData] = useState<{
+    sources: SourceResponse[];
+    summary: Record<string, Record<string, unknown>>;
+  }>({ sources: [], summary: {} });
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => undefined);
   }, []);
 
-  function handleUploaded(_job: ProcessingJobResponse) {
+  function handleUploaded(_job?: ProcessingJobResponse) {
     setRefreshNonce((n) => n + 1);
   }
 
+  function getBreadcrumb() {
+    switch (activeTab) {
+      case "query":
+        return "Query & Grounding Engine";
+      case "sources":
+        return "Ingested Multi-Modal Corpus";
+      case "graph":
+        return "Cross-Modal Relationship Graph";
+      case "qdrant":
+        return "Qdrant Vector Database Explorer";
+    }
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-20 backdrop-blur bg-white/85 border-b border-slate-200">
-        <div className="max-w-[1600px] mx-auto px-6 py-3.5 flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 via-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-sm">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8M12 17v4" />
-                <path d="m8 10 3 3L16 7" />
-              </svg>
-            </div>
-            <div>
-              <div className="font-semibold leading-tight text-slate-900">Multimodal RAG</div>
-              <div className="text-[11px] text-slate-500 leading-tight">
-                Evidence Explorer · Video · Audio · PDF · Image
+    <div className="flex h-screen w-screen bg-[#09090b] overflow-hidden text-[#f4f4f5]">
+      {/* MAIN LAYOUT (Sidebar + Workspace) */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* SIDEBAR NAVIGATION */}
+        <div className="w-[230px] bg-[#121215] border-r border-[#27272a] p-3 flex flex-col justify-between shrink-0">
+          <div>
+            {/* Workspace Header */}
+            <div className="p-2.5 rounded-lg bg-[#18181b] border border-[#27272a] mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded bg-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                  R
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-zinc-100 leading-none">Multimodal RAG</div>
+                  <div className="text-[10px] text-zinc-400 leading-none mt-1">Production Pipeline</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="ml-auto flex items-center gap-2 text-xs">
-            {health && (
-              <div className="flex items-center gap-3 text-slate-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      health.status === "ok" ? "bg-emerald-500" : "bg-amber-500"
-                    }`}
-                  />
-                  API {health.status}
-                </span>
-                <span className="text-slate-500">·</span>
-                <span title="Groq LLM / Whisper configured">
-                  🔊 {health.whisper_model}
-                </span>
-                <span className="text-slate-500">·</span>
-                <span title="LLM">{health.groq_model}</span>
-                <span className="text-slate-500">·</span>
-                <span title="Embeddings">{health.embedding_model}</span>
-                {!health.groq_configured && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 ring-1 ring-amber-200">
-                    Mock mode — add GROQ_API_KEY
+            {/* Navigation Items */}
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("query")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md font-medium text-xs transition-all ${
+                  activeTab === "query"
+                    ? "bg-[#27272a] text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:bg-[#27272a]/60 hover:text-zinc-200"
+                }`}
+              >
+                <Sparkles className={`w-4 h-4 ${activeTab === "query" ? "text-indigo-400" : "text-zinc-400"}`} />
+                <span>Query & Grounding</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("sources")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md font-medium text-xs transition-all ${
+                  activeTab === "sources"
+                    ? "bg-[#27272a] text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:bg-[#27272a]/60 hover:text-zinc-200"
+                }`}
+              >
+                <Folder className={`w-4 h-4 ${activeTab === "sources" ? "text-indigo-400" : "text-zinc-400"}`} />
+                <span>Ingested Sources</span>
+                {sourcesData.sources.length > 0 && (
+                  <span className="ml-auto px-1.5 py-0.2 bg-zinc-800 text-[10px] text-zinc-300 rounded font-mono">
+                    {sourcesData.sources.length}
                   </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("graph")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md font-medium text-xs transition-all ${
+                  activeTab === "graph"
+                    ? "bg-[#27272a] text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:bg-[#27272a]/60 hover:text-zinc-200"
+                }`}
+              >
+                <GitFork className={`w-4 h-4 ${activeTab === "graph" ? "text-indigo-400" : "text-zinc-400"}`} />
+                <span>Relationship Graph</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("qdrant")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md font-medium text-xs transition-all ${
+                  activeTab === "qdrant"
+                    ? "bg-[#27272a] text-white font-semibold shadow-sm"
+                    : "text-zinc-400 hover:bg-[#27272a]/60 hover:text-zinc-200"
+                }`}
+              >
+                <Database className={`w-4 h-4 ${activeTab === "qdrant" ? "text-indigo-400" : "text-zinc-400"}`} />
+                <span>Qdrant Payload DB</span>
+              </button>
+            </div>
+          </div>
+
+          {/* System Status Footer */}
+          <div className="p-2.5 rounded-lg bg-[#18181b] border border-[#27272a] text-xs">
+            <div className="text-[11px] font-medium text-zinc-400 mb-1 flex items-center justify-between">
+              <span>Database Status</span>
+              <span
+                className={`font-mono text-[10px] font-semibold ${
+                  health?.status === "ok" ? "text-emerald-400" : "text-amber-400"
+                }`}
+              >
+                {health?.status === "ok" ? "Active" : "Degraded"}
+              </span>
+            </div>
+            <div className="text-[10px] text-zinc-400 space-y-0.5 mono">
+              <div>Qdrant: {health?.qdrant_collection || "evidence_items"}</div>
+              <div>Model: {health?.groq_model ? "Groq Llama-3.3" : "Local / Offline"}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN WORKSPACE */}
+        <div className="flex-1 flex flex-col bg-[#09090b] overflow-hidden">
+          {/* TOP TOOLBAR */}
+          <div className="h-11 border-b border-[#27272a] px-5 flex items-center justify-between bg-[#121215] shrink-0">
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <span>Multimodal RAG</span>
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+              <span className="text-zinc-200 font-medium">{getBreadcrumb()}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#27272a] text-zinc-300 border border-[#3f3f46]">
+                4 Modalities (Video, Audio, PDF, Image)
+              </span>
+              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#27272a] text-zinc-300 border border-[#3f3f46]">
+                Zero-Invention Grounding
+              </span>
+            </div>
+          </div>
+
+          {/* DYNAMIC TAB WORKSPACE */}
+          <div className="flex-1 p-4 overflow-hidden min-h-0">
+            {activeTab === "query" && (
+              <div className="h-full grid grid-cols-12 gap-4 overflow-hidden min-h-0">
+                {/* LEFT COLUMN: Sources (5 Cols) */}
+                <div className="col-span-12 lg:col-span-5 flex flex-col gap-3 min-h-0 h-full">
+                  <UploadPanel onUploaded={handleUploaded} />
+                  <SourcesList
+                    refreshNonce={refreshNonce}
+                    selectedSourceId={selectedSourceId}
+                    onSelect={setSelectedSourceId}
+                    onSourcesUpdate={(sources, summary) => setSourcesData({ sources, summary })}
+                  />
+                </div>
+
+                {/* RIGHT COLUMN: Query Box & Answer (7 Cols) */}
+                <div className="col-span-12 lg:col-span-7 flex flex-col gap-3 min-h-0 h-full">
+                  <QueryPanel sources={sourcesData.sources} summaries={sourcesData.summary} />
+                </div>
               </div>
             )}
-          </div>
-        </div>
-      </header>
 
-      <main className="max-w-[1600px] mx-auto w-full flex-1 px-6 py-6">
-        <div className="grid grid-cols-12 gap-6 items-start">
-          <section className="col-span-12 lg:col-span-5 space-y-6 min-h-0">
-            <UploadPanel onUploaded={handleUploaded} />
-            <div className="lg:sticky lg:top-24">
-              <SourcesList
+            {activeTab === "sources" && (
+              <SourcesExplorer
+                sources={sourcesData.sources}
+                summary={sourcesData.summary}
                 refreshNonce={refreshNonce}
-                selectedSourceId={selectedSourceId}
-                onSelect={setSelectedSourceId}
-                onSourcesUpdate={(sources, summary) => setSourcesData({ sources, summary })}
+                onUploaded={handleUploaded}
               />
-            </div>
-          </section>
+            )}
 
-          <section className="col-span-12 lg:col-span-7">
-            <QueryPanel sources={sourcesData.sources} summaries={sourcesData.summary} />
-          </section>
-        </div>
-      </main>
+            {activeTab === "graph" && <GraphExplorer sources={sourcesData.sources} />}
 
-      <footer className="border-t border-slate-200 bg-white/60">
-        <div className="max-w-[1600px] mx-auto px-6 py-3 text-[11px] text-slate-500 flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            Multimodal evidence ingestion + retrieval pipeline · Qdrant vector search · PostgreSQL metadata · Groq LLM with provenance grounding
-          </div>
-          <div>
-            {health && (
-              <>Qdrant collection: <span className="font-mono text-slate-700">{health.qdrant_collection}</span> · Storage: <span className="font-mono text-slate-700">{health.storage_path}</span></>
+            {activeTab === "qdrant" && (
+              <QdrantExplorer health={health} sources={sourcesData.sources} />
             )}
           </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

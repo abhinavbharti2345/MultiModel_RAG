@@ -8,6 +8,7 @@ import {
   formatBytes,
   formatSeconds,
 } from "./Badges";
+import { Video, Mic, Image as ImageIcon, FileText, Trash2 } from "lucide-react";
 
 interface Props {
   refreshNonce: number;
@@ -97,57 +98,86 @@ export function SourcesList({ refreshNonce, selectedSourceId, onSelect, onSource
     [sources],
   );
 
+  const totalEvidenceRows = Object.values(summary).reduce((acc, curr) => acc + (Number(curr.total_evidence) || 0), 0);
+
+  function getIcon(type: string) {
+    switch (type) {
+      case "video": return <Video className="w-3.5 h-3.5 text-pink-400" />;
+      case "audio": return <Mic className="w-3.5 h-3.5 text-amber-400" />;
+      case "image": return <ImageIcon className="w-3.5 h-3.5 text-purple-400" />;
+      case "pdf": return <FileText className="w-3.5 h-3.5 text-emerald-400" />;
+      default: return <FileText className="w-3.5 h-3.5 text-zinc-400" />;
+    }
+  }
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm h-full flex flex-col">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-        <div>
-          <h2 className="font-semibold text-slate-900">Media library</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {sorted.length} source{sorted.length === 1 ? "" : "s"} · processing status auto-refreshes
-          </p>
-        </div>
-        <button
-          onClick={async () => {
-            if (confirm("Clear all sources and evidence?")) {
-              await api.clearAllSources();
-              window.location.reload();
-            }
-          }}
-          className="text-xs px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
-        >
-          Clear
-        </button>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin divide-y divide-slate-100">
-        {loading && sorted.length === 0 && (
-          <div className="p-8 text-center text-sm text-slate-500">Loading…</div>
-        )}
-        {!loading && sorted.length === 0 && (
-          <div className="p-8 text-center text-sm text-slate-500">
-            Nothing uploaded yet. Start by dropping a video or PDF above.
-          </div>
-        )}
-
-        {sorted.map((s) => {
-          const sum = summary[s.id];
-          const selected = s.id === selectedSourceId;
-          return (
+    <div className="card-surface p-3 flex-1 flex flex-col justify-between overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-2.5 shrink-0">
+          <span className="text-xs font-semibold text-zinc-300">Active Corpus ({sorted.length} files)</span>
+          {sorted.length > 0 && (
             <button
-              key={s.id}
-              onClick={() => onSelect(selected ? null : s.id)}
-              className={`w-full text-left px-5 py-4 transition hover:bg-slate-50
-                ${selected ? "bg-brand-50/50 hover:bg-brand-50" : ""}`}
+              onClick={async () => {
+                if (confirm("Clear all sources and evidence?")) {
+                  await api.clearAllSources();
+                  window.location.reload();
+                }
+              }}
+              className="text-[10px] text-rose-400 hover:text-rose-300 transition"
             >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5">
-                  <SourceTypeBadge type={s.source_type} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="truncate font-medium text-slate-900">{s.name}</div>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={s.status} />
+              Clear All
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2 overflow-y-auto scrollbar-thin pr-1 flex-1">
+          {loading && sorted.length === 0 && (
+            <div className="text-center text-xs text-zinc-500 py-4">Loading corpus...</div>
+          )}
+          {!loading && sorted.length === 0 && (
+            <div className="text-center text-xs text-zinc-500 py-4">
+              Nothing uploaded yet.
+            </div>
+          )}
+
+          {sorted.map((s) => {
+            const sum = summary[s.id];
+            const selected = s.id === selectedSourceId;
+            
+            return (
+              <div
+                key={s.id}
+                onClick={() => onSelect(selected ? null : s.id)}
+                className={`p-2 rounded cursor-pointer transition border 
+                  ${selected ? "bg-[#27272a] border-[#3f3f46]" : "bg-[#27272a]/40 border-[#3f3f46]/40 hover:bg-[#27272a]/70"}`}
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {getIcon(s.source_type)}
+                    <div className="min-w-0">
+                      <div className="font-medium text-zinc-200 text-[11px] truncate">{s.name}</div>
+                      <div className="text-[9.5px] text-zinc-400 truncate">
+                        {s.status === 'completed' && sum ? (
+                          <>
+                            {s.source_type === 'video' ? `FFmpeg + OpenCV Keyframes (${sum.frames_important ?? 0} frames)` : ''}
+                            {s.source_type === 'audio' ? 'Whisper STT' : ''}
+                            {s.source_type === 'image' ? 'VLM Diagram OCR' : ''}
+                            {s.source_type === 'pdf' ? `pypdf (${sum.total_evidence ?? 0} chunks)` : ''}
+                          </>
+                        ) : (
+                          <span className="capitalize">{s.status.replace('_', ' ')}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[10px] text-zinc-400 mono flex items-center gap-1.5">
+                      {s.status === 'completed' ? (
+                        sum ? `${sum.total_evidence ?? 0} evidence` : 'Done'
+                      ) : (
+                        `${Math.round(s.progress_percent)}%`
+                      )}
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -156,56 +186,33 @@ export function SourcesList({ refreshNonce, selectedSourceId, onSelect, onSource
                             window.location.reload();
                           }
                         }}
-                        className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded-md hover:bg-rose-50"
+                        className="text-zinc-500 hover:text-rose-400"
                         title="Delete source"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
+                        <Trash2 className="w-3 h-3" />
                       </button>
-                    </div>
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                    {s.duration_seconds !== undefined && s.duration_seconds > 0 && (
-                      <span>⏱ {formatSeconds(s.duration_seconds)}</span>
-                    )}
-                    {s.page_count !== undefined && s.page_count > 0 && (
-                      <span>📄 {s.page_count} page{s.page_count === 1 ? "" : "s"}</span>
-                    )}
-                    {s.file_size !== undefined && <span>{formatBytes(s.file_size)}</span>}
-                    <span className="opacity-70">
-                      {new Date(s.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
-
-                  <div className="mt-2 space-y-1.5">
-                    <ProgressBar value={s.progress_percent} status={s.status} />
-                    {sum && (
-                      <div className="text-xs text-slate-500 flex flex-wrap gap-x-3">
-                        <span>{String(sum.total_evidence ?? 0)} evidence records</span>
-                        {sum.evidence_by_modality ? (
-                          Object.entries(sum.evidence_by_modality as Record<string, number>).map(
-                            ([k, v]) => (
-                              <span key={k}>
-                                {k}: {v}
-                              </span>
-                            ),
-                          )
-                        ) : null}
-                        <span>
-                          {String(sum.frames_important ?? 0)}/{String(sum.frames_total ?? 0)} key frames
-                        </span>
-                      </div>
-                    )}
-                    {!sum && s.status_message && s.status !== "completed" && (
-                      <div className="text-xs text-slate-500 truncate">{s.status_message}</div>
-                    )}
-                  </div>
                 </div>
+
+                {s.status !== "completed" && s.status !== "failed" && (
+                  <div className="mt-2">
+                    <ProgressBar value={s.progress_percent} status={s.status} />
+                    <div className="mt-1 text-[9px] text-zinc-500 truncate">{s.status_message}</div>
+                  </div>
+                )}
+                {s.status === "failed" && (
+                  <div className="mt-2 text-[9px] text-rose-400 truncate">{s.status_message}</div>
+                )}
               </div>
-            </button>
-          );
-        })}
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="pt-2 mt-2 border-t border-[#27272a] text-[10px] text-zinc-400 flex justify-between shrink-0">
+        <span>Multi-Modal Indexing</span>
+        <span className="text-zinc-300 font-mono">{totalEvidenceRows} Evidence Rows</span>
       </div>
     </div>
   );

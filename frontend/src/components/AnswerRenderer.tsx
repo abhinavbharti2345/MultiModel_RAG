@@ -11,10 +11,7 @@ interface Props {
 
 export function AnswerRenderer({ answer, onCitationClick }: Props) {
   // Pre-process the answer to convert citations into markdown links.
-  // The LLM might output things like (Evidence ID: 1234-5678) or Source: xyz, Evidence ID: 1234
   const processedAnswer = useMemo(() => {
-    // Regex matches "Evidence ID: <uuid>" or just "(Evidence ID: <uuid>)"
-    // and captures the UUID.
     return answer.replace(
       /\(?\s*(?:Source:[^,]+,\s*.*?|)Evidence ID:\s*([a-fA-F0-9-]+)\s*\)?/gi,
       (match, id) => {
@@ -23,20 +20,18 @@ export function AnswerRenderer({ answer, onCitationClick }: Props) {
     );
   }, [answer]);
 
-  // A helper function to scroll to the evidence card and flash it
   const scrollToEvidence = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     if (onCitationClick) {
       onCitationClick();
     }
-    // Need a slight delay to allow React to render the evidence tab if it was hidden
     setTimeout(() => {
       const el = document.getElementById(`evidence-${id}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('ring-4', 'ring-brand-400', 'ring-opacity-50', 'transition-all', 'duration-500');
+        el.classList.add('border-indigo-500', 'bg-indigo-950/20');
         setTimeout(() => {
-          el.classList.remove('ring-4', 'ring-brand-400', 'ring-opacity-50');
+          el.classList.remove('border-indigo-500', 'bg-indigo-950/20');
         }, 1500);
       } else {
         console.warn(`Evidence card ${id} not found in DOM`);
@@ -45,7 +40,7 @@ export function AnswerRenderer({ answer, onCitationClick }: Props) {
   };
 
   return (
-    <div className="prose prose-sm prose-slate max-w-none">
+    <div className="prose-answer text-xs text-zinc-300">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -56,13 +51,13 @@ export function AnswerRenderer({ answer, onCitationClick }: Props) {
                 style={vscDarkPlus}
                 language={match[1]}
                 PreTag="div"
-                className="rounded-md !my-4 !text-[13px]"
+                className="rounded-md !my-4 !text-[11px] border border-zinc-700/50"
                 {...props}
               >
                 {String(children).replace(/\n$/, '')}
               </SyntaxHighlighter>
             ) : (
-              <code className="bg-slate-100 text-brand-700 px-1 py-0.5 rounded text-[13px]" {...props}>
+              <code className="bg-zinc-800 text-zinc-300 border border-zinc-700 px-1 py-0.5 rounded text-[11px]" {...props}>
                 {children}
               </code>
             );
@@ -73,27 +68,27 @@ export function AnswerRenderer({ answer, onCitationClick }: Props) {
               return (
                 <button
                   onClick={(e) => scrollToEvidence(evidenceId, e)}
-                  className="inline-flex items-center justify-center px-1.5 py-0.5 ml-1 text-[10px] font-bold text-white bg-brand-500 hover:bg-brand-600 rounded cursor-pointer no-underline align-baseline shadow-sm transition-colors"
+                  className="inline-flex items-center justify-center px-1.5 py-0.5 mx-1 text-[9px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded cursor-pointer transition-colors translate-y-[-2px]"
                   title="Click to view evidence"
                 >
-                  {children === 'Citation' ? '📑' : children}
+                  {children === 'Citation' ? '📑 Source' : children}
                 </button>
               );
             }
-            return <a href={href} className="text-brand-600 hover:underline" {...props}>{children}</a>;
+            return <a href={href} className="text-indigo-400 hover:text-indigo-300 hover:underline" {...props}>{children}</a>;
           },
           table({ node, ...props }) {
             return (
-              <div className="overflow-x-auto my-4">
-                <table className="min-w-full divide-y divide-slate-300 border border-slate-200 rounded-lg overflow-hidden" {...props} />
+              <div className="overflow-x-auto my-3">
+                <table className="min-w-full divide-y divide-zinc-700 border border-zinc-800 rounded overflow-hidden" {...props} />
               </div>
             );
           },
           th({ node, ...props }) {
-            return <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-900" {...props} />;
+            return <th className="bg-zinc-900 px-3 py-2 text-left text-xs font-semibold text-zinc-300" {...props} />;
           },
           td({ node, ...props }) {
-            return <td className="whitespace-nowrap px-3 py-2 text-sm text-slate-500 border-t border-slate-200" {...props} />;
+            return <td className="whitespace-nowrap px-3 py-2 text-[11px] text-zinc-400 border-t border-zinc-800" {...props} />;
           }
         }}
       >
